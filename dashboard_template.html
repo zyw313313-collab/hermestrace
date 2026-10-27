@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hermestrace</title>
+<style>
+:root {
+  --bg:#0b0e14; --panel:#131826; --panel2:#1a2030; --border:#262d40;
+  --text:#e6e9f0; --dim:#8b94ae; --accent:#5b9dff; --green:#39d353;
+  --orange:#e3a008; --purple:#bc8cff; --pink:#ff7ab6; --cyan:#39c5cf;
+  --red:#f85149; --yellow:#d4c04e;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,'Segoe UI',Roboto,'Noto Sans SC','PingFang SC',sans-serif;
+  font-size:14px; }
+a { color:var(--accent); }
+
+/* ---------- top bar ---------- */
+header { position:sticky; top:0; z-index:50; background:rgba(19,24,38,.92);
+  backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
+  padding:10px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.logo { font-size:17px; font-weight:700; letter-spacing:.4px; white-space:nowrap; }
+.logo .hl { background:linear-gradient(90deg,var(--accent),var(--purple));
+  -webkit-background-clip:text; background-clip:text; color:transparent; }
+nav.tabs { display:flex; gap:4px; }
+nav.tabs button { background:none; border:1px solid transparent; color:var(--dim);
+  padding:6px 16px; border-radius:8px; font-size:14px; cursor:pointer; font-weight:600; }
+nav.tabs button:hover { color:var(--text); background:var(--panel2); }
+nav.tabs button.active { color:var(--accent); background:rgba(91,157,255,.12);
+  border-color:rgba(91,157,255,.4); }
+#task-select { background:var(--panel2); color:var(--text); border:1px solid var(--border);
+  border-radius:8px; padding:6px 10px; font-size:13px; max-width:340px; }
+#gen-time { color:var(--dim); font-size:11px; margin-left:auto; }
+
+/* ---------- layout ---------- */
+main { padding:20px 24px 80px; max-width:1500px; margin:0 auto; }
+section.tab { display:none; }
+section.tab.active { display:block; }
+h2.sec { font-size:16px; margin:26px 0 12px; display:flex; align-items:center; gap:10px; }
+h2.sec:first-child { margin-top:4px; }
+h2.sec .sub { color:var(--dim); font-size:12px; font-weight:400; }
+
+/* ---------- cards / stats ---------- */
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:12px;
+  padding:14px 16px; }
+.card .n { font-size:24px; font-weight:700; line-height:1.2; }
+.card .n small { font-size:12px; color:var(--dim); font-weight:400; }
+.card .l { color:var(--dim); font-size:12px; margin-top:3px; }
+.card .accent { color:var(--accent); } .card .green { color:var(--green); }
+.card .orange { color:var(--orange); } .card .purple { color:var(--purple); }
+.card .cyan { color:var(--cyan); } .card .pink { color:var(--pink); }
+.card .red { color:var(--red); } .card .yellow { color:var(--yellow); }
+
+.taskgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px; }
+.taskcard { background:var(--panel); border:1px solid var(--border); border-radius:14px;
+  padding:16px 18px; cursor:pointer; transition:.15s; position:relative; overflow:hidden; }
+.taskcard:hover { border-color:var(--accent); transform:translateY(-2px); }
+.taskcard.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent),0 6px 24px rgba(91,157,255,.12); }
+.taskcard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+  background:linear-gradient(180deg,var(--accent),var(--purple)); }
+.taskcard h3 { margin:0 0 4px; font-size:15px; }
+.taskcard .sid { color:var(--dim); font-size:11px; font-family:ui-monospace,monospace; }
+.taskcard .meta { color:var(--dim); font-size:12px; margin-top:8px; line-height:1.7; }
+.taskcard .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.chip { font-size:11px; padding:2px 9px; border-radius:20px; background:var(--panel2);
+  border:1px solid var(--border); color:var(--dim); }
+.chip.b { color:var(--accent); border-color:rgba(91,157,255,.35); }
+.chip.g { color:var(--green); border-color:rgba(57,211,83,.35); }
+.chip.o { color:var(--orange); border-color:rgba(227,160,8,.35); }
+.chip.p { color:var(--purple); border-color:rgba(188,140,255,.35); }
+
+/* ---------- tables ---------- */
+table { width:100%; border-collapse:collapse; font-size:13px; background:var(--panel);
+  border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+th { text-align:left; color:var(--dim); font-weight:600; font-size:11.5px;
+  text-transform:uppercase; letter-spacing:.4px; padding:9px 12px;
+  background:var(--panel2); border-bottom:1px solid var(--border); }
+td { padding:7px 12px; border-bottom:1px solid var(--border); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(91,157,255,.04); }
+td.num, th.num { text-align:right; font-variant-numeric:tabular-nums;
+  font-family:ui-monospace,monospace; }
+.mono { font-family:ui-monospace,monospace; font-size:12px; }
+
+/* ---------- charts ---------- */
+.chartbox { background:var(--panel); border:1px solid var(--border); border-radius:12px;
+  padding:16px 18px 10px; margin-bottom:16px; }
+.chartbox h4 { margin:0 0 2px; font-size:13.5px; }
+.chartbox .desc { color:var(--dim); font-size:11.5px; margin-bottom:10px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media (max-width:1000px){ .grid2 { grid-template-columns:1fr; } }
+.legend { display:flex; flex-wrap:wrap; gap:10px 18px; font-size:12px; margin-top:8px; }
+.legend .li { display:flex; align-items:center; gap:6px; color:var(--dim); }
+.legend .sw { width:11px; height:11px; border-radius:3px; }
+.legend .v { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* usage grid (100 cells) */
+.ugrid { display:grid; grid-template-columns:repeat(20,1fr); gap:3px; max-width:560px; }
+.ucell { aspect-ratio:1; border-radius:3px; background:var(--panel2); }
+.ugrid-note { color:var(--dim); font-size:11.5px; margin-top:8px; line-height:1.7; }
+
+/* ---------- timeline (Sessions) ---------- */
+.controls { display:flex; gap:8px; margin:14px 0 16px; flex-wrap:wrap; align-items:center; }
+.controls button, .controls input { background:var(--panel2); color:var(--text);
+  border:1px solid var(--border); border-radius:8px; padding:5px 12px; font-size:12.5px; cursor:pointer; }
+.controls button.active { border-color:var(--accent); color:var(--accent); }
+.controls input { cursor:text; width:220px; }
+.event { border:1px solid var(--border); border-radius:10px; margin-bottom:10px;
+  background:var(--panel); overflow:hidden; }
+.event.hidden { display:none; }
+.ev-head { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; user-select:none; }
+.ev-head:hover { background:rgba(91,157,255,.05); }
+.badge { font-size:11px; font-weight:600; padding:2px 9px; border-radius:10px; flex:none; }
+.badge.user { background:rgba(57,211,83,.13); color:var(--green); }
+.badge.assistant_text { background:rgba(188,140,255,.13); color:var(--purple); }
+.badge.tool_call { background:rgba(227,160,8,.13); color:var(--orange); }
+.ev-title { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ev-time { color:var(--dim); font-size:11px; margin-left:auto; flex:none; }
+.ev-body { display:none; padding:4px 14px 14px; font-size:13px; }
+.event.open .ev-body { display:block; }
+pre { background:#0a0d14; border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; overflow:auto; font-size:12px; line-height:1.55;
+  white-space:pre-wrap; word-break:break-word; max-height:380px; margin:4px 0; }
+.label { font-size:11px; color:var(--dim); margin:10px 0 0; text-transform:uppercase; letter-spacing:.5px; }
+
+/* ---------- runs ---------- */
+.run { border:1px solid var(--border); border-radius:10px; margin-bottom:12px; background:var(--panel); }
+.run-head { display:flex; gap:12px; align-items:center; padding:10px 14px; cursor:pointer; }
+.run-head:hover { background:rgba(91,157,255,.05); }
+.run-n { font-weight:700; color:var(--accent); font-size:13px; flex:none; }
+.run-msg { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.run-meta { color:var(--dim); font-size:11.5px; flex:none; }
+.run-body { display:none; border-top:1px solid var(--border); padding:10px 14px; }
+.run.open .run-body { display:block; }
+.step { display:flex; gap:10px; align-items:baseline; padding:5px 0; font-size:12.5px;
+  border-bottom:1px dashed var(--border); }
+.step:last-child { border-bottom:none; }
+.step .si { color:var(--dim); font-size:11px; width:22px; text-align:right; flex:none; }
+.step .sn { color:var(--orange); font-weight:600; min-width:110px; }
+.step .sd { color:var(--cyan); font-variant-numeric:tabular-nums; flex:none; }
+.step .sx { color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.step.assistant .sn { color:var(--purple); }
+.step.user .sn { color:var(--green); }
+
+.empty { color:var(--dim); padding:30px; text-align:center; border:1px dashed var(--border);
+  border-radius:12px; }
+.note { color:var(--dim); font-size:12px; line-height:1.8; background:var(--panel);
+  border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-top:16px; }
+footer { color:var(--dim); font-size:11.5px; text-align:center; margin-top:40px; line-height:2; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="hl">hermes</span>trace</div>
+  <nav class="tabs">
+    <button data-tab="sessions" class="active">Sessions</button>
+    <button data-tab="requests">Requests</button>
+    <button data-tab="context">Context</button>
+    <button data-tab="runs">Runs</button>
+  </nav>
+  <select id="task-select"></select>
+  <div id="gen-time"></div>
+</header>
+
+<main>
+  <!-- ==================== SESSIONS ==================== -->
+  <section class="tab active" id="tab-sessions">
+    <h2 class="sec">任务 / Sessions <span class="sub">每个 session = 一个独立 task;点击卡片切换全局任务范围</span></h2>
+    <div class="cards" id="task-overview"></div>
+    <div class="taskgrid" id="task-cards" style="margin-top:16px"></div>
+
+    <div id="timeline-zone" style="display:none">
+      <h2 class="sec">会话时间线 <span class="sub" id="timeline-sub"></span></h2>
+      <div class="controls">
+        <button data-f="all" class="active">全部</button>
+        <button data-f="user">用户</button>
+        <button data-f="assistant_text">助手回复</button>
+        <button data-f="tool_call">工具调用</button>
+        <button id="expand">展开</button>
+        <button id="collapse">收起</button>
+        <input id="search" placeholder="搜索...">
+      </div>
+      <div id="timeline"></div>
+    </div>
+  </section>
+
+  <!-- ==================== REQUESTS ==================== -->
+  <section class="tab" id="tab-requests">
+    <h2 class="sec">API Requests <span class="sub">来自 agent.log 的每次 provider 调用(in/out/cache/latency)</span></h2>
+    <div class="cards" id="req-stats"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="chartbox">
+        <h4>上下文随请求增长</h4>
+        <div class="desc">固定开销(system prompt + tools + skills + memory) vs 会话历史,按 provider 上报的 in tokens 拆分</div>
+        <div id="chart-growth"></div>
+      </div>
+      <div class="chartbox">
+        <h4>输入 / 输出 tokens 与延迟</h4>
+        <div class="desc">每次请求的 in、out tokens 及 latency(秒)</div>
+        <div id="chart-inout"></div>
+      </div>
+    </div>
+    <div class="chartbox">
+      <h4>缓存命中率</h4>
+      <div class="desc">cache_read / input tokens —— 命中率越高,重复计费越少</div>
+      <div id="chart-cache"></div>
+    </div>
+    <h2 class="sec">请求明细</h2>
+    <div id="req-table"></div>
+  </section>
+
+  <!-- ==================== CONTEXT ==================== -->
+  <section class="tab" id="tab-context">
+    <h2 class="sec">Context 构成 <span class="sub">估算:字符÷4(与 Hermes 内部 context_breakdown 相同启发式),并按 provider 上报 in= 缩放对齐</span></h2>
+    <div class="cards" id="ctx-stats"></div>
+
+    <div class="grid2" style="margin-top:16px">
+      <div class="chartbox">
+        <h4>分类占用(甜甜圈)</h4>
+        <div class="desc">system prompt / 工具 schema / skills 索引 / MCP / subagent / memory / 会话历史</div>
+        <div id="chart-donut"></div>
+        <div class="legend" id="donut-legend"></div>
+      </div>
+      <div class="chartbox">
+        <h4>Context Window 占用格</h4>
+        <div class="desc">每格 = 窗口的 1%(20×5,参考 pi-context-inspector)</div>
+        <div class="ugrid" id="ugrid"></div>
+        <div class="ugrid-note" id="ugrid-note"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="chartbox">
+        <h4>Skills 占用</h4>
+        <div class="desc">index = 常驻 system prompt 的索引行;SKILL.md = 被 skill_view 加载时一次性占用</div>
+        <div id="chart-skills"></div>
+        <div id="loaded-skills" style="margin-top:8px"></div>
+      </div>
+      <div class="chartbox">
+        <h4>Toolsets / MCP 占用(schema tokens)</h4>
+        <div class="desc">每个 toolset 的工具 JSON schema 常驻开销</div>
+        <div id="chart-toolsets"></div>
+      </div>
+    </div>
+
+    <div class="note" id="ctx-note"></div>
+  </section>
+
+  <!-- ==================== RUNS ==================== -->
+  <section class="tab" id="tab-runs">
+    <h2 class="sec">Runs <span class="sub">一次 run = 从一条用户输入到下一条用户输入之间的完整 agent 循环(思考→工具→…→回复)</span></h2>
+    <div class="cards" id="run-stats"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="chartbox">
+        <h4>工具调用次数</h4>
+        <div class="desc">当前任务范围内每种工具的调用次数</div>
+        <div id="chart-toolcount"></div>
+      </div>
+      <div class="chartbox">
+        <h4>工具平均耗时(秒)</h4>
+        <div class="desc">来自 agent.log 的实测执行时长</div>
+        <div id="chart-tooldur"></div>
+      </div>
+    </div>
+    <h2 class="sec">Run 明细 <span class="sub">点击展开每一步</span></h2>
+    <div id="run-list"></div>
+  </section>
+
+  <footer>
+    hermestrace · 数据源:<code>~/.hermes/state.db</code>(会话/消息)· <code>~/.hermes/logs/agent.log</code>(请求/工具耗时)· <code>hermes prompt-size</code>(context 预算)<br>
+    参考:Hermes <code>agent/context_breakdown.py</code> · pi-context-inspector · context-treemap · cctrace
+  </footer>
+</main>
+
+<script id="hp-data" type="application/json">__HERMESTRACE_DATA__</script>
+<script>
+"use strict";
+const HP = JSON.parse(document.getElementById('hp-data').textContent);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtN = n => n == null ? '-' : n.toLocaleString('en-US');
+const fmtT = n => n == null ? '-' : (n >= 10000 ? (n/1000).toFixed(1)+'k' : String(Math.round(n)));
+const fmtTime = ts => ts ? new Date(ts*1000).toLocaleString('zh-CN',{hour12:false}) : '-';
+const fmtTimeShort = ts => ts ? new Date(ts*1000).toLocaleTimeString('zh-CN',{hour12:false}) : '-';
+const PALETTE = ['#5b9dff','#39d353','#e3a008','#bc8cff','#ff7ab6','#39c5cf','#f85149','#d4c04e','#7ee787','#ffa657'];
+
+function tasks() {
+  const sel = $('#task-select').value;
+  if (sel === '__all__') return HP.tasks;
+  return HP.tasks.filter(t => t.id === sel);
+}
+function selId() { return $('#task-select').value; }
+
+/* =============== tiny SVG charts =============== */
+function svgEl(w, h, extra='') {
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;${extra}" font-family="-apple-system,Segoe UI,sans-serif">`;
+}
+function drawLines(el, {labels, series, h=190, fmt=fmtN}) {
+  const W=560, H=h, L=48, R=10, T=12, B=26;
+  const n = labels.length;
+  if (!n) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
+  let max = 0;
+  series.forEach(s => s.data.forEach(v => { if (v != null && v > max) max = v; }));
+  if (max <= 0) max = 1;
+  const iw = W-L-R, ih = H-T-B;
+  const X = i => L + (n === 1 ? iw/2 : i*iw/(n-1));
+  const Y = v => T + ih - (v/max)*ih;
+  let s = svgEl(W,H);
+  // grid + y labels
+  for (let g=0; g<=4; g++) {
+    const y = T + ih*g/4, v = max*(4-g)/4;
+    s += `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#262d40" stroke-width="1"/>`;
+    s += `<text x="${L-6}" y="${y+3}" fill="#8b94ae" font-size="9.5" text-anchor="end">${fmt(v)}</text>`;
+  }
+  // x labels (sparse)
+  const step = Math.max(1, Math.ceil(n/8));
+  for (let i=0; i<n; i+=step)
+    s += `<text x="${X(i)}" y="${H-8}" fill="#8b94ae" font-size="9.5" text-anchor="middle">${esc(labels[i])}</text>`;
+  series.forEach(se => {
+    const pts = se.data.map((v,i)=> v==null?null:[X(i),Y(v)]).filter(Boolean);
+    if (pts.length) {
+      s += `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round"/>`;
+      if (n <= 40) pts.forEach(p => s += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="${se.color}"><title>${esc(se.name)}</title></circle>`);
+    }
+  });
+  s += '</svg>';
+  const lg = series.map(x=>`<div class="li"><span class="sw" style="background:${x.color}"></span>${esc(x.name)}</div>`).join('');
+  el.innerHTML = s + `<div class="legend">${lg}</div>`;
+}
+function drawStackedBars(el, {labels, stack, h=190, fmt=fmtN}) {
+  const W=560, H=h, L=48, R=10, T=12, B=26;
+  const n = labels.length;
+  if (!n) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
+  const totals = labels.map((_,i)=> stack.reduce((a,s)=>a+(s.data[i]||0),0));
+  let max = Math.max(...totals, 1);
+  const iw=W-L-R, ih=H-T-B, bw = Math.max(3, Math.min(34, iw/n*0.65));
+  const X = i => L + (i+0.5)*iw/n;
+  const Y = v => T + ih - (v/max)*ih;
+  let s = svgEl(W,H);
+  for (let g=0; g<=4; g++) {
+    const y = T + ih*g/4, v = max*(4-g)/4;
+    s += `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#262d40"/>`;
+    s += `<text x="${L-6}" y="${y+3}" fill="#8b94ae" font-size="9.5" text-anchor="end">${fmt(v)}</text>`;
+  }
+  labels.forEach((lab,i) => {
+    let acc = 0;
+    stack.forEach(se => {
+      const v = se.data[i] || 0;
+      if (v <= 0) return;
+      const y1 = Y(acc + v), y2 = Y(acc);
+      s += `<rect x="${X(i)-bw/2}" y="${y1}" width="${bw}" height="${Math.max(0.5,y2-y1)}" fill="${se.color}" rx="1"><title>${esc(lab)} · ${esc(se.name)}: ${fmtN(v)}</title></rect>`;
+      acc += v;
+    });
+  });
+  const step = Math.max(1, Math.ceil(n/8));
+  for (let i=0; i<n; i+=step)
+    s += `<text x="${X(i)}" y="${H-8}" fill="#8b94ae" font-size="9.5" text-anchor="middle">${esc(labels[i])}</text>`;
+  s += '</svg>';
+  const lg = stack.map(x=>`<div class="li"><span class="sw" style="background:${x.color}"></span>${esc(x.name)}</div>`).join('');
+  el.innerHTML = s + `<div class="legend">${lg}</div>`;
+}
+function drawHBars(el, {items, color='#5b9dff', fmt=fmtN, unit=''}) {
+  if (!items.length) { el.innerHTML = '<div class="empty">无数据</div>'; return; }
+  const rowH = 24, W = 560, L = 150, R = 60;
+  const H = items.length*rowH + 8;
+  const max = Math.max(...items.map(d=>d.value), 1);
+  let s = svgEl(W,H);
+  items.forEach((d,i) => {
+    const y = i*rowH + 4, bw = (d.value/max)*(W-L-R);
+    s += `<text x="${L-8}" y="${y+13}" fill="#c9cfe0" font-size="11" text-anchor="end">${esc(d.label)}</text>`;
+    s += `<rect x="${L}" y="${y+3}" width="${Math.max(1,bw)}" height="14" rx="3" fill="${d.color||color}" opacity="0.85"><title>${esc(d.label)}: ${fmt(d.value)}${unit}</title></rect>`;
+    s += `<text x="${L+bw+6}" y="${y+14}" fill="#8b94ae" font-size="10.5">${fmt(d.value)}${unit}</text>`;
+  });
+  s += '</svg>';
+  el.innerHTML = s;
+}
+function drawDonut(el, {segments, total, center1, center2}) {
+  const W=250, H=250, cx=W/2, cy=H/2, r=95, r2=58;
+  let s = svgEl(W,H,'max-width:250px;margin:0 auto;');
+  let a0 = -Math.PI/2;
+  segments.forEach(seg => {
+    if (seg.value <= 0) return;
+    const a1 = a0 + (seg.value/total)*2*Math.PI;
+    const large = (a1-a0) > Math.PI ? 1 : 0;
+    const p = (a,r_) => `${cx+r_*Math.cos(a)},${cy+r_*Math.sin(a)}`;
+    s += `<path d="M ${p(a0,r)} A ${r},${r} 0 ${large} 1 ${p(a1,r)} L ${p(a1,r2)} A ${r2},${r2} 0 ${large} 0 ${p(a0,r2)} Z" fill="${seg.color}"><title>${esc(seg.name)}: ${fmtN(seg.value)} tok (${(seg.value/total*100).toFixed(1)}%)</title></path>`;
+    a0 = a1;
+  });
+  s += `<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#e6e9f0" font-size="22" font-weight="700">${fmtT(total)}</text>`;
+  s += `<text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#8b94ae" font-size="11">${esc(center2||'tokens')}</text>`;
+  s += '</svg>';
+  el.innerHTML = s;
+}
+
+/* =============== data helpers =============== */
+function scoped() {
+  // aggregate metrics across selected task(s)
+  const ts = tasks();
+  const reqs = [], runs = [], turns = [];
+  ts.forEach(t => {
+    (t.requests||[]).forEach(r => reqs.push(r));
+    (t.runs||[]).forEach(r => runs.push(r));
+  });
+  reqs.sort((a,b)=>a.n-b.n || a.ts-b.ts);
+  return {ts, reqs, runs};
+}
+function ctxForScope() {
+  // fixed categories identical across tasks; conversation = from requests (latest in= - fixed) or est
+  const {ts, reqs} = scoped();
+  const fixed = HP.ctx_fixed;                 // [{id,name,tokens,color}]
+  const fixedSum = fixed.reduce((a,c)=>a+c.tokens,0);
+  let conv = 0, lastIn = null, scale = 1;
+  if (reqs.length) {
+    lastIn = reqs[reqs.length-1].in;
+    conv = Math.max(lastIn - fixedSum, 0);
+    const estTotal = fixedSum + (ts.reduce((a,t)=>a+(t.conv_est||0),0) || conv);
+    // scale so displayed total matches provider-reported in=
+    scale = lastIn > 0 ? lastIn / Math.max(estTotal, 1) : 1;
+    if (scale <= 0.05 || scale > 20) scale = 1;
+  } else {
+    conv = ts.reduce((a,t)=>a+(t.conv_est||0),0);
+  }
+  const cats = fixed.map(c => ({...c, tokens: Math.round(c.tokens*scale)}));
+  const convId = 'conversation';
+  const convName = '会话历史 Conversation';
+  const convTok = Math.round(conv * (reqs.length ? 1 : scale));
+  const total = cats.reduce((a,c)=>a+c.tokens,0) + convTok;
+  cats.push({id:convId, name:convName, tokens:convTok, color:'#39d353'});
+  return {cats, total, fixedSum: Math.round(fixedSum*scale), convTok, lastIn, scale, rawFixed: fixedSum};
+}
+function toolAgg() {
+  const {ts} = scoped();
+  const m = {};
+  ts.forEach(t => (t.tool_stats||[]).forEach(s => {
+    const e = m[s.name] || (m[s.name] = {name:s.name, count:0, total_s:0, chars:0, n:0});
+    e.count += s.count; e.total_s += (s.total_s||0); e.chars += (s.chars||0); e.n++;
+  }));
+  return Object.values(m).sort((a,b)=>b.count-a.count);
+}
+
+/* =============== tab: SESSIONS =============== */
+function renderSessions() {
+  // aggregate overview (always shown — no dead space in "all tasks" view)
+  const {ts, reqs, runs} = scoped();
+  const toolCalls = ts.reduce((a,t)=>a+(t.tool_call_count||0),0);
+  const tokIn = ts.reduce((a,t)=>a+(t.tokens?.in||0),0);
+  const tokOut = ts.reduce((a,t)=>a+(t.tokens?.out||0),0);
+  const cost = ts.reduce((a,t)=>a+(t.tokens?.cost||0),0);
+  $('#task-overview').innerHTML = `
+    <div class="card"><div class="n accent">${ts.length}</div><div class="l">任务 / Sessions</div></div>
+    <div class="card"><div class="n purple">${reqs.length}</div><div class="l">API Requests</div></div>
+    <div class="card"><div class="n orange">${toolCalls}</div><div class="l">工具调用</div></div>
+    <div class="card"><div class="n green">${runs.length}</div><div class="l">Runs</div></div>
+    <div class="card"><div class="n">${fmtT(tokIn)}</div><div class="l">输入 tokens</div></div>
+    <div class="card"><div class="n cyan">${fmtT(tokOut)}</div><div class="l">输出 tokens</div></div>
+    <div class="card"><div class="n yellow">$${cost.toFixed(3)}</div><div class="l">估算成本</div></div>`;
+  const grid = $('#task-cards');
+  const sel = selId();
+  grid.innerHTML = HP.tasks.map(t => {
+    const u = t.tokens || {};
+    return `<div class="taskcard ${sel===t.id?'selected':''}" data-id="${esc(t.id)}">
+      <h3>${esc(t.title || '(未命名任务)')}</h3>
+      <div class="sid">${esc(t.id)} · ${esc(t.source||'')}</div>
+      <div class="meta">
+        ${esc(fmtTime(t.started_at))} · ${esc(t.model||'')}<br>
+        ${esc(t.cwd||'')}
+      </div>
+      <div class="chips">
+        <span class="chip b">${(t.request_count||0)} requests</span>
+        <span class="chip o">${(t.tool_call_count||0)} tool calls</span>
+        <span class="chip p">${(t.message_count||0)} messages</span>
+        <span class="chip g">${t.run_count||0} runs</span>
+        ${u.in!=null?`<span class="chip">in ${fmtT(u.in)}</span>`:''}
+        ${u.cost?`<span class="chip">$${u.cost.toFixed(3)}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.taskcard').forEach(c => c.onclick = () => {
+    $('#task-select').value = (sel === c.dataset.id) ? '__all__' : c.dataset.id;
+    renderAll();
+  });
+
+  const zone = $('#timeline-zone');
+  const one = tasks().length === 1 ? tasks()[0] : null;
+  if (!one) { zone.style.display = 'none'; return; }
+  zone.style.display = 'block';
+  $('#timeline-sub').textContent = `${one.title || one.id} · ${fmtTime(one.started_at)}`;
+  renderTimeline(one);
+}
+
+let curTaskForTimeline = null;
+function renderTimeline(t) {
+  const q = ($('#search').value||'').toLowerCase();
+  const f = document.querySelector('.controls button.active')?.dataset.f || 'all';
+  if (curTaskForTimeline !== t.id + q + f) {
+    curTaskForTimeline = t.id + q + f;
+    const tl = $('#timeline');
+    tl.innerHTML = (t.events||[]).map((ev,i) => {
+      let title='', body='', badge='', kind=ev.kind;
+      if (kind==='user') { title=(ev.text||'').slice(0,100).replace(/\n/g,' '); badge='用户';
+        body=`<div class="label">消息</div><pre>${esc(ev.text)}</pre>`; }
+      else if (kind==='assistant_text') { title=(ev.text||'').slice(0,100).replace(/\n/g,' ')||'(空)'; badge='助手';
+        body=`<div class="label">回复</div><pre>${esc(ev.text)}</pre>`;
+        if (ev.reasoning) body+=`<div class="label">推理 reasoning</div><pre>${esc(ev.reasoning)}</pre>`; }
+      else if (kind==='tool_call') {
+        title = ev.name + '(' + JSON.stringify(ev.arguments||{}).slice(0,70) + ')'; badge='🔧 '+esc(ev.name);
+        body=`<div class="label">输入参数</div><pre>${esc(JSON.stringify(ev.arguments,null,2).slice(0,6000))}</pre>`;
+        body += ev.result!=null ? `<div class="label">结果</div><pre>${esc(ev.result)}</pre>` : '<div class="label">结果</div><pre>(未找到)</pre>'; }
+      else { title=(ev.text||kind).slice(0,100); badge=kind; body=`<pre>${esc(ev.text||'')}</pre>`; }
+      const hidden = (f!=='all' && kind!==f) || (q && !((title+(ev.text||'')+(ev.result||'')).toLowerCase().includes(q)));
+      return `<div class="event ${hidden?'hidden':''} ${kind==='tool_call'?'open':''}" data-kind="${kind}" data-i="${i}">
+        <div class="ev-head"><span class="badge ${kind}">${badge}</span>
+        <span class="ev-title">${esc(title)}</span>
+        <span class="ev-time">#${i+1} · ${fmtTimeShort(ev.ts)}</span></div>
+        <div class="ev-body">${body}</div></div>`;
+    }).join('');
+    tl.querySelectorAll('.ev-head').forEach(h => h.onclick = () => h.parentElement.classList.toggle('open'));
+  } else {
+    const q2=q, f2=f;
+    $('#timeline').querySelectorAll('.event').forEach(el => {
+      const hidden = (f2!=='all' && el.dataset.kind!==f2) ||
+        (q2 && !el.textContent.toLowerCase().includes(q2));
+      el.classList.toggle('hidden', hidden);
+    });
+  }
+}
+$('#search').addEventListener('input', () => { const one=tasks(); if (one.length===1) { curTaskForTimeline=null; renderTimeline(one[0]); } });
+document.querySelectorAll('.controls button[data-f]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.controls button[data-f]').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  const one=tasks(); if (one.length===1) { curTaskForTimeline=null; renderTimeline(one[0]); }
+});
+$('#expand').onclick = () => $('#timeline').querySelectorAll('.event').forEach(e=>e.classList.add('open'));
+$('#collapse').onclick = () => $('#timeline').querySelectorAll('.event').forEach(e=>e.classList.remove('open'));
+
+/* =============== tab: REQUESTS =============== */
+function renderRequests() {
+  const {reqs} = scoped();
+  const last = reqs.length ? reqs[reqs.length-1] : null;
+  const totalIn = reqs.reduce((a,r)=>a+(r.in||0),0);
+  const totalOut = reqs.reduce((a,r)=>a+(r.out||0),0);
+  const avgLat = reqs.length ? reqs.reduce((a,r)=>a+(r.latency||0),0)/reqs.length : 0;
+  const avgCache = reqs.length ? reqs.reduce((a,r)=>a+(r.cache_pct||0),0)/reqs.length : 0;
+  $('#req-stats').innerHTML = `
+    <div class="card"><div class="n accent">${reqs.length}</div><div class="l">API 请求数</div></div>
+    <div class="card"><div class="n">${fmtT(totalIn)}</div><div class="l">累计输入 tokens</div></div>
+    <div class="card"><div class="n green">${fmtT(totalOut)}</div><div class="l">累计输出 tokens</div></div>
+    <div class="card"><div class="n orange">${avgLat.toFixed(1)}<small> s</small></div><div class="l">平均延迟</div></div>
+    <div class="card"><div class="n cyan">${avgCache.toFixed(0)}<small> %</small></div><div class="l">平均缓存命中</div></div>
+    <div class="card"><div class="n purple">${last ? fmtT(last.in) : '-'}</div><div class="l">最新请求上下文占用</div></div>`;
+
+  // growth chart: fixed vs conversation per request
+  const fx = HP.ctx_fixed.reduce((a,c)=>a+c.tokens,0);
+  const labels = reqs.map((r,i)=> '#'+(r.n ?? i+1));
+  const convData = reqs.map(r => Math.max((r.in||0)-fx, 0));
+  const fixedData = reqs.map(r => Math.min(fx, r.in||0));
+  drawStackedBars($('#chart-growth'), {labels, stack:[
+    {name:'固定开销 (prompt/tools/skills)', data:fixedData, color:'#5b9dff'},
+    {name:'会话历史', data:convData, color:'#39d353'}]});
+
+  drawLines($('#chart-inout'), {labels, series:[
+    {name:'输入 tokens', data:reqs.map(r=>r.in||0), color:'#5b9dff'},
+    {name:'输出 tokens', data:reqs.map(r=>r.out||0), color:'#bc8cff'},
+    {name:'延迟 s', data:reqs.map(r=>r.latency||0), color:'#e3a008'}]});
+  const inSeries = reqs.map(r=>r.cache_pct ?? null);
+  drawLines($('#chart-cache'), {labels, h:150, fmt:v=>v.toFixed(0)+'%', series:[
+    {name:'缓存命中 %', data:inSeries, color:'#39c5cf'}]});
+
+  if (!reqs.length) { $('#req-table').innerHTML = '<div class="empty">当前范围内没有请求记录(日志可能已轮转)</div>'; return; }
+  $('#req-table').innerHTML = `<table><thead><tr>
+      <th>#</th><th>时间</th><th>session</th><th>model / provider</th>
+      <th class="num">in</th><th class="num">out</th><th class="num">cache</th><th class="num">命中</th><th class="num">latency</th></tr></thead><tbody>` +
+    reqs.map(r => `<tr>
+      <td class="mono">${r.n ?? '-'}</td><td>${fmtTimeShort(r.ts)}</td>
+      <td class="mono" style="font-size:11px">${esc((r.sid||'').slice(-8))}</td>
+      <td>${esc(r.model||'')} <span style="color:var(--dim)">@${esc(r.provider||'')}</span></td>
+      <td class="num">${fmtN(r.in)}</td><td class="num">${fmtN(r.out)}</td>
+      <td class="num">${fmtN(r.cache_read)}</td><td class="num">${r.cache_pct ?? '-'}%</td>
+      <td class="num">${(r.latency??0).toFixed(1)}s</td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+/* =============== tab: CONTEXT =============== */
+function winInfo() {
+  // window depends on model; prefer the selected task's model, then primary
+  const one = tasks().length === 1 ? tasks()[0] : null;
+  const m = (one && one.model) || HP.model;
+  const w = HP.ctx_windows && HP.ctx_windows[m];
+  if (w) return {value: w.value, assumed: w.assumed, model: m};
+  return {value: HP.ctx_window, assumed: HP.ctx_window_assumed, model: m};
+}
+function renderContext() {
+  const {cats, total, convTok, lastIn, scale} = ctxForScope();
+  const win = winInfo().value;
+  const assumed = winInfo().assumed;
+  const used = lastIn ?? total;
+  const pct = win ? (used/win*100) : null;
+  $('#ctx-stats').innerHTML = `
+    <div class="card"><div class="n accent">${fmtT(used)}</div><div class="l">当前占用 tokens${lastIn?' (provider 上报)':' (估算)'}</div></div>
+    <div class="card"><div class="n">${fmtT(win)}</div><div class="l">Context window${assumed?' (假设值)':''} · ${esc(winInfo().model||'?')}</div></div>
+    <div class="card"><div class="n ${pct!=null&&pct>80?'red':'green'}">${pct!=null?pct.toFixed(1)+'%':'-'}</div><div class="l">窗口占用率</div></div>
+    <div class="card"><div class="n orange">${fmtT(cats.find(c=>c.id==='system_prompt')?.tokens||0)}</div><div class="l">System prompt</div></div>
+    <div class="card"><div class="n purple">${fmtT(cats.find(c=>c.id==='tool_definitions')?.tokens||0)}</div><div class="l">工具 schemas</div></div>
+    <div class="card"><div class="n cyan">${fmtT(cats.find(c=>c.id==='skills')?.tokens||0)}</div><div class="l">Skills 索引</div></div>`;
+
+  const shown = cats.filter(c=>c.tokens>0).map(c=>({name:c.name, value:c.tokens, color:c.color}));
+  drawDonut($('#chart-donut'), {segments:shown, total: Math.max(total,1), center1:'', center2:'tokens'});
+  $('#donut-legend').innerHTML = cats.map(c =>
+    `<div class="li"><span class="sw" style="background:${c.color}"></span>${esc(c.name)}
+     <span class="v">${fmtN(c.tokens)}</span><span style="color:var(--dim)">(${total?(c.tokens/total*100).toFixed(1):0}%)</span></div>`).join('');
+
+  // 100-cell grid
+  const cells = [];
+  const w = win || Math.ceil(used/10000)*10000;
+  const order = ['system_prompt','tool_definitions','rules','skills','mcp','subagent_definitions','memory','conversation'];
+  cats.forEach(c => { const n = Math.round((c.tokens/w)*100); for (let i=0;i<n && cells.length<100;i++) cells.push(c.color); });
+  while (cells.length < 100) cells.push(null);
+  $('#ugrid').innerHTML = cells.map((col,i)=>
+    `<div class="ucell" style="${col?`background:${col}`:''};" title="${col?'占用格':'空闲'}"></div>`).join('');
+  $('#ugrid-note').innerHTML = `每格 = 1% 窗口 · 已用 <b style="color:var(--text)">${used.toLocaleString()}</b> / ${w.toLocaleString()}` +
+    (pct!=null ? ` · 空闲 <b style="color:var(--green)">${Math.max(0,Math.round(w-used)).toLocaleString()}</b>` : '');
+
+  // skills bars: top by skill_md size + index cost
+  const sk = (HP.skills||[]).slice().sort((a,b)=>b.skill_md_tokens-a.skill_md_tokens).slice(0,12);
+  drawHBars($('#chart-skills'), {items: sk.map(s=>({label:s.name, value:s.skill_md_tokens, color:'#39c5cf'})), fmt:fmtN, unit:' tok'});
+  const loaded = new Set();
+  tasks().forEach(t => (t.events||[]).forEach(ev => {
+    if (ev.kind==='tool_call' && ev.name==='skill_view') {
+      const nm = ev.arguments && (ev.arguments.name || ev.arguments.skill);
+      if (nm) loaded.add(nm);
+    }
+  }));
+  $('#loaded-skills').innerHTML = loaded.size
+    ? `<div class="label">本任务已加载(full SKILL.md 进入上下文)</div><div class="legend">${[...loaded].map(n=>`<span class="chip o">${esc(n)}</span>`).join('')}</div>`
+    : `<div class="label">本任务未加载任何 skill 正文</div>`;
+
+  const ts2 = (HP.toolsets||[]).slice().sort((a,b)=>b.schema_tokens-a.schema_tokens);
+  drawHBars($('#chart-toolsets'), {items: ts2.map(t=>({label:`${t.toolset} (${t.tool_count})`, value:t.schema_tokens, color:'#bc8cff'})), fmt:fmtN, unit:' tok'});
+
+  const mcpCats = cats.find(c=>c.id==='mcp');
+  $('#ctx-note').innerHTML = `<b>方法说明</b>:分类估算使用字符÷4 启发式(与 Hermes <code>agent/context_breakdown.py</code> 一致),再乘以单一缩放系数对齐 provider 上报的 in=<b>${lastIn?fmtN(lastIn):'n/a'}</b>(${scale!==1?'缩放 ×'+scale.toFixed(2):'原始估算'})。
+   常驻开销来自 <code>hermes prompt-size</code>:system prompt ${fmtN(HP.ps_raw.system_prompt?.chars||0)} 字符 · skills 索引 ${fmtN(HP.ps_raw.skills_index?.chars||0)} 字符 · ${HP.ps_raw.tools?.count||0} 个工具 schema ${fmtN(HP.ps_raw.tools?.json_bytes||0)} 字节 · memory ${fmtN(HP.ps_raw.memory?.chars||0)} 字符。
+   MCP:${mcpCats && mcpCats.tokens>0 ? fmtN(mcpCats.tokens)+' tok' : '未连接任何 MCP server(工具集为空)'}。SKILL.md 正文仅在 skill_view 被调用时占用上下文,不计入常驻。`;
+}
+
+/* =============== tab: RUNS =============== */
+function renderRuns() {
+  const {ts, runs} = scoped();
+  const toolCalls = ts.reduce((a,t)=>a+(t.tool_call_count||0),0);
+  const agg = toolAgg();
+  const totalDur = agg.reduce((a,x)=>a+(x.total_s||0),0);
+  const slowest = agg.slice().sort((a,b)=>b.total_s-a.total_s)[0];
+  $('#run-stats').innerHTML = `
+    <div class="card"><div class="n accent">${runs.length}</div><div class="l">Run 总数</div></div>
+    <div class="card"><div class="n orange">${toolCalls}</div><div class="l">工具调用</div></div>
+    <div class="card"><div class="n cyan">${agg.length}</div><div class="l">不同工具</div></div>
+    <div class="card"><div class="n">${totalDur.toFixed(1)}<small> s</small></div><div class="l">工具累计耗时</div></div>
+    <div class="card"><div class="n pink">${slowest?esc(slowest.name):'-'}</div><div class="l">最耗时工具 ${slowest?'('+slowest.total_s.toFixed(1)+'s)':''}</div></div>
+    <div class="card"><div class="n green">${runs.length?Math.round(toolCalls/runs.length):0}</div><div class="l">平均每次 run 工具调用</div></div>`;
+
+  drawHBars($('#chart-toolcount'), {items: agg.slice(0,12).map(x=>({label:x.name, value:x.count, color:'#e3a008'})), fmt:v=>v+'×'});
+  drawHBars($('#chart-tooldur'), {items: agg.filter(x=>x.total_s>0).slice(0,12).map(x=>({label:x.name, value:+(x.total_s/Math.max(x.count,1)).toFixed(2), color:'#39c5cf'})), fmt:v=>v+'s'});
+
+  const list = $('#run-list');
+  if (!runs.length) { list.innerHTML = '<div class="empty">当前范围没有 run 数据</div>'; return; }
+  list.innerHTML = runs.map((r,i) => {
+    const steps = (r.steps||[]).map((s,j) => {
+      let cls = s.kind==='tool_call' ? '' : s.kind;
+      const nm = s.kind==='tool_call' ? '🔧 '+s.name : (s.kind==='user'?'👤 用户':'🤖 助手');
+      return `<div class="step ${cls}"><span class="si">${j+1}</span><span class="sn">${esc(nm)}</span>
+        ${s.dur!=null?`<span class="sd">${s.dur.toFixed(2)}s</span>`:''}
+        <span class="sx">${esc((s.text||s.args||'').replace(/\n/g,' ').slice(0,160))}</span></div>`;
+    }).join('');
+    return `<div class="run"><div class="run-head">
+        <span class="run-n">Run #${i+1}</span>
+        <span class="run-msg">${esc(r.trigger||'(无输入)')}</span>
+        <span class="run-meta">${(r.steps||[]).length} 步 · ${(r.tools||0)} 工具 · ${fmtTimeShort(r.ts)}</span>
+      </div><div class="run-body">${steps}</div></div>`;
+  }).join('');
+  list.querySelectorAll('.run-head').forEach(h => h.onclick = () => h.parentElement.classList.toggle('open'));
+}
+
+/* =============== navigation =============== */
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('section.tab').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  $('#tab-'+b.dataset.tab).classList.add('active');
+  renderAll();
+});
+$('#task-select').onchange = () => { curTaskForTimeline=null; renderAll(); };
+
+function renderAll() {
+  renderSessions(); renderRequests(); renderContext(); renderRuns();
+}
+function init() {
+  const sel = $('#task-select');
+  sel.innerHTML = `<option value="__all__">📋 全部任务 (${HP.tasks.length})</option>` +
+    HP.tasks.map(t=>`<option value="${esc(t.id)}">▸ ${esc(t.title||t.id)}</option>`).join('');
+  $('#gen-time').textContent = '生成于 ' + HP.generated_at + ' · model: ' + (HP.model||'?');
+  // support #requests / #context / #runs deep links
+  const hash = location.hash.replace('#','');
+  if (['sessions','requests','context','runs'].includes(hash)) {
+    document.querySelector(`nav.tabs button[data-tab="${hash}"]`).click();
+  }
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
