@@ -89,7 +89,7 @@ context window 按每个 task 自己的模型从 `context_length_cache.yaml` 读
 GitHub 参考:Hermes `agent/context_breakdown.py`、pi-context-inspector
 (token 缩放 + 占用格)、context-treemap(MCP/skills 占用图)、cctrace(导出格式)。
 
-## 课程作业(两个 Hermes agent)的用法
+## 两个 Hermes agent
 
 - **Agent A(执行者)**:正常执行 task,操作自动落库,无需任何额外动作
 - **Agent B(观察者)**:读 Hermes 源码(`~/.hermes/hermes-agent/`)理解工作流,
