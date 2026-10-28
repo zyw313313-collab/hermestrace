@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_FILES = (
     ".gitignore",
     "README.md",
+    "README.en.md",
     "hermestrace.py",
     "dashboard.py",
     "dashboard_template.html",

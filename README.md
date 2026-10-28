@@ -1,5 +1,7 @@
 # hermestrace
 
+[简体中文](README.md) | [English](README.en.md)
+
 Hermes Agent 会话追踪与可视化 —— cctrace 之于 Claude Code 的 Hermes 等价物。
 每个 task(session)完全分开,四大分栏:**Sessions / Requests / Context / Runs**,
 含 context 构成(skills、MCP、tools、system prompt…)的占用图表。
