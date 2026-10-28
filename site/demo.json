@@ -1,0 +1,143 @@
+{
+  "generated_at": "2026-10-28 10:00:00 (模拟数据)",
+  "model": "demo-model",
+  "ctx_window": 131072,
+  "ctx_window_assumed": true,
+  "ctx_windows": {"demo-model": {"value": 131072, "assumed": true}},
+  "ctx_fixed": [
+    {"id": "system_prompt", "name": "System prompt", "tokens": 2200, "color": "#5b9dff"},
+    {"id": "tool_definitions", "name": "Tool definitions", "tokens": 1600, "color": "#bc8cff"},
+    {"id": "rules", "name": "Rules (AGENTS.md)", "tokens": 350, "color": "#e3a008"},
+    {"id": "skills", "name": "Skills index", "tokens": 400, "color": "#39c5cf"},
+    {"id": "mcp", "name": "MCP", "tokens": 450, "color": "#ff7ab6"},
+    {"id": "subagent_definitions", "name": "Subagent defs", "tokens": 300, "color": "#d4c04e"},
+    {"id": "memory", "name": "Memory / profile", "tokens": 200, "color": "#f85149"}
+  ],
+  "ps_raw": {
+    "system_prompt": {"chars": 13400},
+    "skills_index": {"chars": 1600},
+    "memory": {"chars": 600},
+    "user_profile": {"chars": 200},
+    "tools": {"count": 12, "json_bytes": 9400}
+  },
+  "skills": [
+    {"name": "project-review", "index_tokens": 120, "skill_md_tokens": 1800},
+    {"name": "data-analysis", "index_tokens": 100, "skill_md_tokens": 1250},
+    {"name": "web-preview", "index_tokens": 100, "skill_md_tokens": 960},
+    {"name": "report-writing", "index_tokens": 80, "skill_md_tokens": 720}
+  ],
+  "toolsets": [
+    {"toolset": "terminal", "tool_count": 2, "schema_tokens": 700},
+    {"toolset": "files", "tool_count": 3, "schema_tokens": 600},
+    {"toolset": "skills", "tool_count": 2, "schema_tokens": 300},
+    {"toolset": "mcp-demo", "tool_count": 3, "schema_tokens": 450},
+    {"toolset": "delegation", "tool_count": 2, "schema_tokens": 300}
+  ],
+  "tasks": [
+    {
+      "id": "demo-project-review",
+      "title": "项目梳理与可视化发布 · 演示",
+      "source": "synthetic-demo",
+      "model": "demo-model",
+      "started_at": 1793149200,
+      "cwd": "/demo/hermestrace",
+      "message_count": 11,
+      "tool_call_count": 4,
+      "request_count": 5,
+      "run_count": 2,
+      "tokens": {"in": 47300, "out": 1880, "cache": 25500, "cost": 0.023},
+      "conv_est": 7200,
+      "events": [
+        {"kind": "user", "ts": 1793149200, "text": "帮我梳理这个项目，并给出可视化发布方案。"},
+        {"kind": "assistant_text", "ts": 1793149202, "text": "我先阅读项目说明和入口文件，再整理数据来源与部署方式。", "reasoning": "演示说明：先识别项目结构，再核对界面所需的数据。"},
+        {"kind": "tool_call", "ts": 1793149204, "name": "skill_view", "call_id": "demo-call-1", "arguments": {"name": "project-review"}, "result": "模拟技能：阅读文档 → 检查入口 → 绘制数据流程 → 验证运行方式。"},
+        {"kind": "tool_call", "ts": 1793149208, "name": "read_file", "call_id": "demo-call-2", "arguments": {"path": "README.md"}, "result": "hermestrace：读取 Hermes 会话、API 请求和工具日志，生成 Sessions / Requests / Context / Runs 四栏仪表盘。"},
+        {"kind": "tool_call", "ts": 1793149214, "name": "terminal", "call_id": "demo-call-3", "arguments": {"command": "python hermestrace.py --help"}, "result": "usage: hermestrace {list,export,latest,dashboard,watch} ...\n模拟命令输出：CLI 入口检查通过。"},
+        {"kind": "assistant_text", "ts": 1793149220, "text": "项目由 CLI、数据聚合器和 HTML 模板组成。公开演示可以使用静态页面与模拟数据。", "reasoning": "演示说明：静态页面内嵌 JSON，不需要后端服务。"},
+        {"kind": "user", "ts": 1793149260, "text": "再加上离线界面下载入口。"},
+        {"kind": "tool_call", "ts": 1793149264, "name": "write_file", "call_id": "demo-call-4", "arguments": {"path": "demo/download-example.html", "description": "添加保存 HTML 的交互入口"}, "result": "模拟写入完成：离线 HTML 包含内嵌数据和全部样式。"},
+        {"kind": "assistant_text", "ts": 1793149270, "text": "下载入口准备完成。保存 HTML 后，双击文件即可继续切换任务、查看图表和展开时间线。", "reasoning": ""}
+      ],
+      "runs": [
+        {
+          "ts": 1793149200,
+          "trigger": "帮我梳理这个项目，并给出可视化发布方案。",
+          "tools": 3,
+          "steps": [
+            {"kind": "assistant_text", "ts": 1793149202, "text": "阅读项目说明和入口文件。"},
+            {"kind": "tool_call", "ts": 1793149204, "name": "skill_view", "args": "{\"name\":\"project-review\"}", "dur": 0.18},
+            {"kind": "tool_call", "ts": 1793149208, "name": "read_file", "args": "{\"path\":\"README.md\"}", "dur": 0.07},
+            {"kind": "tool_call", "ts": 1793149214, "name": "terminal", "args": "python hermestrace.py --help", "dur": 0.84},
+            {"kind": "assistant_text", "ts": 1793149220, "text": "整理 CLI、聚合器、模板与静态发布方案。"}
+          ]
+        },
+        {
+          "ts": 1793149260,
+          "trigger": "再加上离线界面下载入口。",
+          "tools": 1,
+          "steps": [
+            {"kind": "tool_call", "ts": 1793149264, "name": "write_file", "args": "添加下载按钮与 HTML 快照保存。", "dur": 0.12},
+            {"kind": "assistant_text", "ts": 1793149270, "text": "离线界面下载入口准备完成。"}
+          ]
+        }
+      ],
+      "tool_stats": [
+        {"name": "skill_view", "count": 1, "total_s": 0.18, "chars": 72},
+        {"name": "read_file", "count": 1, "total_s": 0.07, "chars": 110},
+        {"name": "terminal", "count": 1, "total_s": 0.84, "chars": 95},
+        {"name": "write_file", "count": 1, "total_s": 0.12, "chars": 54}
+      ],
+      "requests": [
+        {"ts": 1793149202, "sid": "demo-project-review", "n": 1, "model": "demo-model", "provider": "demo-provider", "in": 6200, "out": 280, "total": 6480, "latency": 1.4, "cache_read": 0, "cache_pct": 0},
+        {"ts": 1793149208, "sid": "demo-project-review", "n": 2, "model": "demo-model", "provider": "demo-provider", "in": 7800, "out": 420, "total": 8220, "latency": 2.1, "cache_read": 4200, "cache_pct": 54},
+        {"ts": 1793149214, "sid": "demo-project-review", "n": 3, "model": "demo-model", "provider": "demo-provider", "in": 9400, "out": 360, "total": 9760, "latency": 1.8, "cache_read": 5800, "cache_pct": 62},
+        {"ts": 1793149220, "sid": "demo-project-review", "n": 4, "model": "demo-model", "provider": "demo-provider", "in": 11200, "out": 580, "total": 11780, "latency": 2.8, "cache_read": 7200, "cache_pct": 64},
+        {"ts": 1793149264, "sid": "demo-project-review", "n": 5, "model": "demo-model", "provider": "demo-provider", "in": 12700, "out": 240, "total": 12940, "latency": 1.6, "cache_read": 8300, "cache_pct": 65}
+      ]
+    },
+    {
+      "id": "demo-data-report",
+      "title": "数据汇总与报告生成 · 演示",
+      "source": "synthetic-demo",
+      "model": "demo-model",
+      "started_at": 1793152800,
+      "cwd": "/demo/report",
+      "message_count": 6,
+      "tool_call_count": 3,
+      "request_count": 3,
+      "run_count": 1,
+      "tokens": {"in": 26500, "out": 1100, "cache": 12800, "cost": 0.014},
+      "conv_est": 5300,
+      "events": [
+        {"kind": "user", "ts": 1793152800, "text": "分析这组演示数据，输出一份简短报告。"},
+        {"kind": "tool_call", "ts": 1793152803, "name": "skill_view", "call_id": "demo-report-1", "arguments": {"name": "data-analysis"}, "result": "模拟技能：检查输入 → 汇总指标 → 解释结果。"},
+        {"kind": "tool_call", "ts": 1793152807, "name": "terminal", "call_id": "demo-report-2", "arguments": {"command": "python demo_analysis.py"}, "result": "模拟数据：样本 120 条；有效记录 118 条；通过率 98.3%。"},
+        {"kind": "tool_call", "ts": 1793152814, "name": "write_file", "call_id": "demo-report-3", "arguments": {"path": "report.md"}, "result": "模拟报告已生成，包含汇总指标与后续建议。"},
+        {"kind": "assistant_text", "ts": 1793152820, "text": "演示报告完成：120 条样本中有 118 条有效记录，通过率 98.3%。建议复核 2 条异常记录。", "reasoning": "演示说明：所有数值均为预设示例，不对应真实业务数据。"}
+      ],
+      "runs": [
+        {
+          "ts": 1793152800,
+          "trigger": "分析这组演示数据，输出一份简短报告。",
+          "tools": 3,
+          "steps": [
+            {"kind": "tool_call", "ts": 1793152803, "name": "skill_view", "args": "{\"name\":\"data-analysis\"}", "dur": 0.16},
+            {"kind": "tool_call", "ts": 1793152807, "name": "terminal", "args": "python demo_analysis.py", "dur": 1.42},
+            {"kind": "tool_call", "ts": 1793152814, "name": "write_file", "args": "{\"path\":\"report.md\"}", "dur": 0.09},
+            {"kind": "assistant_text", "ts": 1793152820, "text": "生成汇总报告，并标注需要复核的异常记录。"}
+          ]
+        }
+      ],
+      "tool_stats": [
+        {"name": "skill_view", "count": 1, "total_s": 0.16, "chars": 48},
+        {"name": "terminal", "count": 1, "total_s": 1.42, "chars": 64},
+        {"name": "write_file", "count": 1, "total_s": 0.09, "chars": 32}
+      ],
+      "requests": [
+        {"ts": 1793152803, "sid": "demo-data-report", "n": 1, "model": "demo-model", "provider": "demo-provider", "in": 6800, "out": 260, "total": 7060, "latency": 1.2, "cache_read": 0, "cache_pct": 0},
+        {"ts": 1793152807, "sid": "demo-data-report", "n": 2, "model": "demo-model", "provider": "demo-provider", "in": 8900, "out": 450, "total": 9350, "latency": 2.3, "cache_read": 5400, "cache_pct": 61},
+        {"ts": 1793152814, "sid": "demo-data-report", "n": 3, "model": "demo-model", "provider": "demo-provider", "in": 10800, "out": 390, "total": 11190, "latency": 1.9, "cache_read": 7400, "cache_pct": 69}
+      ]
+    }
+  ]
+}

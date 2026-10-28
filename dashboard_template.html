@@ -33,6 +33,28 @@ nav.tabs button.active { color:var(--accent); background:rgba(91,157,255,.12);
 #task-select { background:var(--panel2); color:var(--text); border:1px solid var(--border);
   border-radius:8px; padding:6px 10px; font-size:13px; max-width:340px; }
 #gen-time { color:var(--dim); font-size:11px; margin-left:auto; }
+.downloads { display:flex; gap:8px; flex-wrap:wrap; }
+.downloads button, .downloads a { display:inline-flex; align-items:center; justify-content:center;
+  background:var(--panel2); color:var(--text); border:1px solid var(--border);
+  border-radius:8px; padding:7px 12px; font:inherit; font-size:12px; text-decoration:none; cursor:pointer; }
+.downloads button { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:600; }
+.downloads a:hover, .downloads button:hover { filter:brightness(1.15); }
+.demo-banner { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px;
+  padding:16px 18px; border:1px solid rgba(91,157,255,.4); border-radius:12px;
+  background:linear-gradient(120deg,rgba(91,157,255,.1),rgba(188,140,255,.06)); }
+.demo-banner[hidden] { display:none; }
+.demo-banner strong { color:var(--accent); }
+.demo-banner p { color:var(--dim); margin:6px 0 0; font-size:12px; line-height:1.7; }
+@media (max-width:600px) {
+  header { padding:12px; gap:12px; }
+  nav.tabs { width:100%; overflow:auto; }
+  nav.tabs button { padding:6px 12px; }
+  #task-select { max-width:100%; width:100%; }
+  #gen-time { margin-left:0; }
+  main { padding:16px 12px 48px; }
+  .taskgrid { grid-template-columns:minmax(0,1fr); }
+  #req-table { overflow-x:auto; }
+}
 
 /* ---------- layout ---------- */
 main { padding:20px 24px 80px; max-width:1500px; margin:0 auto; }
@@ -162,10 +184,22 @@ footer { color:var(--dim); font-size:11.5px; text-align:center; margin-top:40px;
     <button data-tab="runs">Runs</button>
   </nav>
   <select id="task-select"></select>
+  <div class="downloads">
+    <button id="download-dashboard" type="button">下载离线界面</button>
+    <a id="download-source" href="https://github.com/zyw313313-collab/hermestrace/archive/refs/heads/main.zip">下载项目 ZIP</a>
+    <a href="https://github.com/zyw313313-collab/hermestrace" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
   <div id="gen-time"></div>
 </header>
 
 <main>
+  <aside class="demo-banner" id="demo-banner" hidden>
+    <div>
+      <strong>在线交互演示 · 模拟数据</strong>
+      <p>点击任务卡片，探索会话时间线、API 请求、上下文与工具执行。下载离线界面后，双击 HTML 即可继续查看。</p>
+      <p>查看自己的会话：下载项目，在有 Hermes 数据的电脑上运行 <code>python hermestrace.py dashboard</code>。</p>
+    </div>
+  </aside>
   <!-- ==================== SESSIONS ==================== -->
   <section class="tab active" id="tab-sessions">
     <h2 class="sec">任务 / Sessions <span class="sub">每个 session = 一个独立 task;点击卡片切换全局任务范围</span></h2>
@@ -696,13 +730,39 @@ $('#task-select').onchange = () => { curTaskForTimeline=null; renderAll(); };
 function renderAll() {
   renderSessions(); renderRequests(); renderContext(); renderRuns();
 }
+function downloadDashboard() {
+  const snapshot = document.documentElement.cloneNode(true);
+  snapshot.dataset.snapshotTask = selId();
+  snapshot.dataset.snapshotTab = document.querySelector('nav.tabs button.active').dataset.tab;
+  const blob = new Blob(['<!DOCTYPE html>\n', snapshot.outerHTML], {type:'text/html;charset=utf-8'});
+  const downloadUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = downloadUrl;
+  anchor.download = 'hermestrace-dashboard.html';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+}
 function init() {
   const sel = $('#task-select');
   sel.innerHTML = `<option value="__all__">📋 全部任务 (${HP.tasks.length})</option>` +
     HP.tasks.map(t=>`<option value="${esc(t.id)}">▸ ${esc(t.title||t.id)}</option>`).join('');
+  const savedTask = document.documentElement.dataset.snapshotTask;
+  if (savedTask && (savedTask==='__all__' || HP.tasks.some(task=>task.id===savedTask))) sel.value=savedTask;
+  $('#demo-banner').hidden = !HP.demo;
+  $('#download-dashboard').onclick = downloadDashboard;
+  if (HP.source_download && /^https?:$/.test(location.protocol)) {
+    const source = $('#download-source');
+    source.href = HP.source_download;
+    source.download = 'hermestrace-source.zip';
+  } else {
+    $('#download-source').href = 'https://github.com/zyw313313-collab/hermestrace/archive/refs/heads/main.zip';
+    $('#download-source').removeAttribute('download');
+  }
   $('#gen-time').textContent = '生成于 ' + HP.generated_at + ' · model: ' + (HP.model||'?');
   // support #requests / #context / #runs deep links
-  const hash = location.hash.replace('#','');
+  const hash = location.hash.replace('#','') || document.documentElement.dataset.snapshotTab || 'sessions';
   if (['sessions','requests','context','runs'].includes(hash)) {
     document.querySelector(`nav.tabs button[data-tab="${hash}"]`).click();
   }

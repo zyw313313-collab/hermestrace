@@ -4,6 +4,27 @@ Hermes Agent 会话追踪与可视化 —— cctrace 之于 Claude Code 的 Herm
 每个 task(session)完全分开,四大分栏:**Sessions / Requests / Context / Runs**,
 含 context 构成(skills、MCP、tools、system prompt…)的占用图表。
 
+## 公网演示与下载
+
+在线打开：[hermestrace 可视化仪表盘](https://zyw313313-collab.github.io/hermestrace/)。
+
+- 公网演示使用仓库内的模拟数据，支持四个分栏、任务切换、时间线搜索和展开。
+- **下载离线界面**：一键保存包含当前数据的 HTML，保留选中的任务和分栏，双击即可离线浏览。
+- **下载项目 ZIP**：下载 Python 工具、界面模板、示例数据和构建脚本，在自己的电脑上读取 Hermes 数据。
+
+GitHub Pages 通过 `.github/workflows/pages.yml` 自动部署，推送 `main` 后更新。
+构建只读取 `site/demo.json`，不会读取本机的会话数据库或日志。
+
+本地预览公网版本：
+
+```bash
+python scripts/build_site.py
+python -m http.server 8000 --directory _site
+```
+
+浏览器打开 `http://localhost:8000`。查看真实会话需先在本地运行 Hermes，
+再使用下方命令生成仪表盘；可通过环境变量 `HERMES_HOME` 指定数据目录。
+
 ## 不需要逆向:Hermes 数据全部明文在本地
 
 | 分栏 | 数据源 | 内容 |
@@ -82,4 +103,7 @@ GitHub 参考:Hermes `agent/context_breakdown.py`、pi-context-inspector
 hermestrace.py            # CLI:list / export / latest / watch / dashboard
 dashboard.py              # 数据聚合:state.db + agent.log + prompt-size
 dashboard_template.html   # 仪表盘模板(数据内嵌,单文件输出)
+site/demo.json            # 公网演示的模拟数据
+scripts/build_site.py     # 生成 GitHub Pages 页面和源码下载包
+.github/workflows/pages.yml # 自动部署公网界面
 ```
