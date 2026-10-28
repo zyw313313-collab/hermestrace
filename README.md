@@ -25,7 +25,7 @@ python -m http.server 8000 --directory _site
 浏览器打开 `http://localhost:8000`。查看真实会话需先在本地运行 Hermes，
 再使用下方命令生成仪表盘；可通过环境变量 `HERMES_HOME` 指定数据目录。
 
-## 不需要逆向:Hermes 数据全部明文在本地
+## Hermes 数据全部明文在本地
 
 | 分栏 | 数据源 | 内容 |
 |---|---|---|
